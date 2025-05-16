@@ -1,0 +1,22 @@
+# Node.js / React / React Native
+node_modules/
+.env
+dist/
+build/
+.cache/
+.expo/
+.expo-shared/
+*.log
+*.tmp
+.DS_Store
+.vscode/
+.idea/
+DEVELOPMENT_LOG.md
+DEVELOPMENT_LOG.pdf
+GUIA_DESENVOLVIMENTO.md
+projeto-rede-social-p2p.md
+projeto-rede-social-p2p.pdf
+orbitdb/
+data/
+
+
