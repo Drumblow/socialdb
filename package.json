@@ -2,10 +2,10 @@
   "name": "coredb-libp2p-test",
   "version": "1.0.0",
   "description": "Test project for libp2p",
-  "main": "test-libp2p.js",
+  "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "start": "node test-libp2p.js"
+    "start": "node src/index.js"
   },
   "keywords": [],
   "author": "",

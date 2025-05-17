@@ -7,14 +7,14 @@ $Node1DataDir = ".\data\node1"
 $Node2DataDir = ".\data\node2"
 $Node1Port = "9001"
 $Node2Port = "9002"
-$NodeScriptPath = ".\social-app-core.js" # Caminho para o script Node.js
+$NodeScriptPath = ".\src\index.js" # Caminho para o script Node.js
 $LogDir = ".\logs" # Diretório para logs
 $Node1LogFile = Join-Path $LogDir "node1.log"
 $Node2LogFile = Join-Path $LogDir "node2.log"
 $InitialWaitSeconds = 10 # Tempo para o Nó 1 inicializar e logar o PeerID
 $PeerIdExtractionAttempts = 5
 $PeerIdExtractionRetryDelaySeconds = 5
-$TestRunDurationSeconds = 75 # Duração total do teste após o Nó 2 iniciar
+$TestRunDurationSeconds = 100 # Duração total do teste após o Nó 2 iniciar
 
 $Global:Node1Process = $null
 $Global:Node2Process = $null
