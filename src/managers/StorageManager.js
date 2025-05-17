@@ -1,6 +1,11 @@
 import { createHelia } from 'helia';
 import { createOrbitDB } from '@orbitdb/core';
+import { registerFeed } from '@orbitdb/feed-db';
 import path from 'path';
+
+// Registrar os tipos de banco de dados necessários.
+// Isso deve ser feito uma vez antes que createOrbitDB seja chamado com esses tipos.
+registerFeed();
 
 export class StorageManager {
   constructor(eventBus, identityManager, heliaNodeInstance, orbitDbDirectory) {
@@ -24,6 +29,10 @@ export class StorageManager {
       console.log("STORAGE_MAN: Criando instância OrbitDB...");
       // Garantir que o diretório exista ou que OrbitDB possa criá-lo se necessário.
       // fs.mkdirSync(this.orbitDbDirectory, { recursive: true }); // Opcional, OrbitDB geralmente cria.
+      if (!this.orbitDbDirectory) {
+        console.error("STORAGE_MAN: Diretório do OrbitDB não especificado.");
+        throw new Error("STORAGE_MAN: Diretório do OrbitDB é obrigatório para persistência.");
+      }
       this.orbitDB = await createOrbitDB({ 
         ipfs: this.heliaNode, 
         directory: this.orbitDbDirectory 

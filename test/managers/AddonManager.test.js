@@ -19,7 +19,7 @@ import { FsDatastore } from 'datastore-fs';
 import { MemoryBlockstore } from 'blockstore-core';
 import { createHelia } from 'helia';
 
-const createMockIdentityManager = (peerId = 'mock-test-peer-id') => ({
+export const createMockIdentityManager = (peerId = 'mock-test-peer-id') => ({
   getPeerId: async () => ({ toString: () => peerId }),
   init: async () => ({}),
   close: async () => {},
@@ -403,6 +403,45 @@ async function runTests() {
     await datastore.close();
     // fs.rmSync(tempDatastorePath, { recursive: true, force: true });
     // fs.rmSync(tempOrbitDbPath, { recursive: true, force: true });
+  });
+
+  test("Deve carregar o posts-addon e tentar obter seu DB escopado", async () => {
+    const mockEventBus = new EventBus();
+    const randomSuffixPosts = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const tempDatastorePathPosts = path.resolve(process.cwd(), `.test-datastore-posts-${randomSuffixPosts}`);
+    const tempOrbitDbPathPosts = path.resolve(process.cwd(), `.test-orbitdb-posts-${randomSuffixPosts}`);
+    
+    const datastore = new FsDatastore(tempDatastorePathPosts);
+    await datastore.open();
+    const key = await generateKeyPair('Ed25519');
+    const peerIdInstance = await peerIdFromPrivateKey(key);
+    const libp2p = await createMockLibp2p(peerIdInstance, datastore);
+    await libp2p.start();
+    const heliaNode = await createHelia({ libp2p, datastore });
+    const mockIdentityManager = createMockIdentityManager(peerIdInstance.toString());
+    
+    const storageManager = new StorageManager(mockEventBus, mockIdentityManager, heliaNode, tempOrbitDbPathPosts);
+    await storageManager.init();
+    
+    const addonManager = new AddonManager(mockEventBus, mockIdentityManager, null, storageManager);
+    await addonManager.init();
+
+    const POSTS_ADDON_PATH = './addons/posts-addon/index.js';
+    const addonInstance = await addonManager.loadAddon(POSTS_ADDON_PATH);
+    
+    console.assert(addonInstance, "Falha ao carregar posts-addon.");
+    console.assert(addonInstance.status === 'initialized', "Posts-addon não foi inicializado corretamente.");
+    console.assert(addonInstance.manifestId === 'posts-addon', "ID do manifest do posts-addon incorreto.");
+    
+    const dbInstance = addonInstance._getDB ? addonInstance._getDB() : null;
+    console.assert(dbInstance, "Instância do userPostsDB não foi obtida ou exposta pelo posts-addon.");
+    console.assert(dbInstance.type === 'feed', "O DB do posts-addon não é do tipo 'feed'.");
+
+    await addonManager.unloadAddon('posts-addon');
+    await storageManager.close();
+    await heliaNode.stop();
+    await libp2p.stop();
+    await datastore.close();
   });
 
   finalizeTests();
