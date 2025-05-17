@@ -1,4 +1,5 @@
 import { NotInitializedError } from './utils/errors.js';
+import fetch from 'node-fetch';
 
 export class CoreAPI {
   constructor(eventBus, identityManager, networkManager, storageManager, addonManager, addonId, addonPermissions = []) {
@@ -123,6 +124,51 @@ export class CoreAPI {
       // Não relançar para o addon necessariamente, a menos que seja uma política.
       // Retornar null indica falha.
       return null;
+    }
+  }
+
+  /**
+   * Realiza uma requisição HTTP GET.
+   * O addon deve ter a permissão 'core:httpClient:get'.
+   * @param {string} url A URL para a qual fazer a requisição GET.
+   * @returns {Promise<object|null>} O corpo da resposta JSON parseado, ou null em caso de erro ou falta de permissão.
+   */
+  async httpClientGet(url) {
+    this.log(`httpClientGet chamado para URL: ${url}`);
+    if (!this.hasPermission('core:httpClient:get')) {
+      // O aviso já foi logado por hasPermission.
+      return null;
+    }
+
+    if (!url || typeof url !== 'string') {
+      console.error(`CoreAPI [${this.addonId}]: URL inválida fornecida para httpClientGet: ${url}`);
+      return null;
+    }
+
+    try {
+      this.log(`httpClientGet: Realizando fetch para ${url}...`);
+      const response = await fetch(url);
+      if (!response.ok) {
+        this.log(`httpClientGet: Falha ao buscar de ${url}. Status: ${response.status} ${response.statusText}`);
+        // Poderia retornar o objeto de resposta para o addon lidar com erros HTTP se desejado.
+        // Por ora, um erro na resposta HTTP é tratado como uma falha em obter o JSON.
+        return null; 
+      }
+      const jsonData = await response.json();
+      this.log(`httpClientGet: Dados JSON recebidos de ${url}.`);
+      return jsonData;
+    } catch (error) {
+      this.log(`httpClientGet: ERRO DETALHADO durante fetch para ${url}:`);
+      this.log('httpClientGet: Error Name:', error.name);
+      this.log('httpClientGet: Error Message:', error.message);
+      if (error.cause) {
+        this.log('httpClientGet: Error Cause:', JSON.stringify(error.cause, Object.getOwnPropertyNames(error.cause)));
+      } else {
+        this.log('httpClientGet: Error Cause: N/A');
+      }
+      this.log('httpClientGet: Error Stack:', error.stack);
+      this.log('httpClientGet: Full Error Object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      return null; 
     }
   }
 

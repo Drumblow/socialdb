@@ -445,7 +445,120 @@ async function runTests() {
     await datastore.close();
   });
 
-  finalizeTests();
+  // Testes para StremioBridgeAddon
+  const STREMIO_BRIDGE_ADDON_PATH = './addons/stremio-bridge-addon/index.js';
+
+  test("StremioBridgeAddon: Deve carregar e inicializar o addon", async () => {
+    const mockEventBus = new EventBus();
+    const mockIdentityManager = createMockIdentityManager();
+    const addonManager = new AddonManager(mockEventBus, mockIdentityManager, mockNetworkManager, mockStorageManager);
+    await addonManager.init();
+
+    const addonInstance = await addonManager.loadAddon(STREMIO_BRIDGE_ADDON_PATH);
+    console.assert(addonInstance, "Instância do StremioBridgeAddon não foi retornada.");
+    console.assert(addonInstance.status === 'initialized', "StremioBridgeAddon não foi inicializado corretamente.");
+    console.assert(addonInstance.manifestId === 'stremio-bridge-addon', "ID do manifest do StremioBridgeAddon incorreto.");
+
+    const loadedAddonInfo = addonManager.getLoadedAddon('stremio-bridge-addon');
+    console.assert(loadedAddonInfo, "Informações do StremioBridgeAddon carregado não encontradas.");
+    console.assert(loadedAddonInfo.coreApi, "CoreAPI do StremioBridgeAddon não encontrada.");
+    console.assert(loadedAddonInfo.coreApi.addonId === 'stremio-bridge-addon', "CoreAPI do addon não possui o addonId correto.");
+    
+    await addonManager.unloadAddon('stremio-bridge-addon');
+  });
+
+  test("StremioBridgeAddon: Deve chamar getAvailableStremioAddons e retornar o addon simulado", async () => {
+    const mockEventBus = new EventBus();
+    const mockIdentityManager = createMockIdentityManager();
+    const addonManager = new AddonManager(mockEventBus, mockIdentityManager, mockNetworkManager, mockStorageManager);
+    await addonManager.init();
+    const addonInstance = await addonManager.loadAddon(STREMIO_BRIDGE_ADDON_PATH);
+    console.assert(addonInstance, "Falha ao carregar StremioBridgeAddon para teste de getAvailableStremioAddons.");
+
+    console.assert(typeof addonInstance.getAvailableStremioAddons === 'function', "Função getAvailableStremioAddons não encontrada no StremioBridgeAddon.");
+    
+    const availableStremioAddons = addonInstance.getAvailableStremioAddons();
+    console.assert(Array.isArray(availableStremioAddons), "getAvailableStremioAddons não retornou um array.");
+    // Esperamos que o Cinemeta V3 seja carregado
+    console.assert(availableStremioAddons.length >= 1, `Nenhum addon Stremio foi carregado (esperado Cinemeta). Encontrados: ${availableStremioAddons.length}`);
+    
+    const cinemetaAddon = availableStremioAddons.find(a => a.id === 'com.linvo.cinemeta');
+    console.assert(cinemetaAddon, "Addon Cinemeta (com.linvo.cinemeta) não encontrado na lista de addons carregados.");
+    console.assert(cinemetaAddon.id === 'com.linvo.cinemeta', "ID do addon Cinemeta incorreto.");
+    // O nome pode ser 'Cinemeta v3' ou 'Cinemeta V3', então verificamos se contém 'Cinemeta'
+    console.assert(cinemetaAddon.name && cinemetaAddon.name.toLowerCase().includes('cinemeta'), `Nome do addon Cinemeta ('${cinemetaAddon.name}') não parece correto.`);
+
+    await addonManager.unloadAddon('stremio-bridge-addon');
+  });
+
+  test("StremioBridgeAddon: Deve buscar um catálogo de filmes do Cinemeta V3", async () => {
+    const mockEventBus = new EventBus();
+    const mockIdentityManager = createMockIdentityManager();
+    const addonManager = new AddonManager(mockEventBus, mockIdentityManager, mockNetworkManager, mockStorageManager);
+    await addonManager.init();
+    const addonInstance = await addonManager.loadAddon(STREMIO_BRIDGE_ADDON_PATH);
+    console.assert(addonInstance, "Falha ao carregar StremioBridgeAddon para teste de getStremioCatalog.");
+
+    console.assert(typeof addonInstance.getStremioCatalog === 'function', "Função getStremioCatalog não encontrada.");
+
+    const stremioAddonId = 'com.linvo.cinemeta';
+    const catalogType = 'movie';
+    const catalogId = 'top'; // Catálogo popular/top filmes do Cinemeta V3
+
+    console.log(`TEST_INFO: Solicitando catálogo real ${catalogType}/${catalogId} de ${stremioAddonId}`);
+    const catalogData = await addonInstance.getStremioCatalog(stremioAddonId, catalogType, catalogId);
+
+    console.assert(catalogData, `Falha ao buscar catálogo real ${catalogType}/${catalogId} do addon ${stremioAddonId}. Resposta foi null ou undefined.`);
+    console.assert(typeof catalogData === 'object', "Resposta do catálogo real não é um objeto.");
+    console.assert(Array.isArray(catalogData.metas), "Resposta do catálogo real não contém um array 'metas'.");
+    console.assert(catalogData.metas.length > 0, "Array 'metas' do catálogo real está vazio (nenhum filme retornado?).");
+    // Verificar se os itens em metas têm as propriedades esperadas (ex: id, name, type)
+    const firstMeta = catalogData.metas[0];
+    console.assert(firstMeta.id, "Primeiro item no catálogo real não tem 'id'.");
+    console.assert(firstMeta.name, "Primeiro item no catálogo real não tem 'name'.");
+    console.assert(firstMeta.type, "Primeiro item no catálogo real não tem 'type'.");
+    console.log(`TEST_INFO: Catálogo real ${catalogType}/${catalogId} de ${stremioAddonId} recebido com ${catalogData.metas.length} itens.`);
+
+    await addonManager.unloadAddon('stremio-bridge-addon');
+  });
+
+  test("StremioBridgeAddon: Deve tentar buscar streams para um filme do Cinemeta", async () => {
+    const mockEventBus = new EventBus();
+    const mockIdentityManager = createMockIdentityManager();
+    const addonManager = new AddonManager(mockEventBus, mockIdentityManager, mockNetworkManager, mockStorageManager);
+    await addonManager.init();
+    const addonInstance = await addonManager.loadAddon(STREMIO_BRIDGE_ADDON_PATH);
+    console.assert(addonInstance, "Falha ao carregar StremioBridgeAddon para teste de getStremioStreams.");
+
+    console.assert(typeof addonInstance.getStremioStreams === 'function', "Função getStremioStreams não encontrada.");
+
+    const stremioAddonId = 'com.linvo.cinemeta'; // ID do Cinemeta
+    const mediaType = 'movie';
+    const mediaId = 'tt0848228'; // Exemplo: ID do IMDb para "The Avengers"
+
+    console.log(`TEST_INFO: Solicitando streams para ${mediaType}:${mediaId} de ${stremioAddonId}`);
+    const streamsData = await addonInstance.getStremioStreams(stremioAddonId, mediaType, mediaId);
+
+    // Cinemeta geralmente não fornece streams, então esperamos uma resposta válida mas possivelmente vazia.
+    console.assert(streamsData, `Falha ao tentar buscar streams para ${mediaType}:${mediaId} do addon ${stremioAddonId}. Resposta foi null ou undefined.`);
+    console.assert(typeof streamsData === 'object', "Resposta de streamsData não é um objeto.");
+    console.assert(Array.isArray(streamsData.streams), "Resposta de streamsData não contém um array 'streams'.");
+    
+    // É normal que o Cinemeta retorne streams: []
+    console.log(`TEST_INFO: Streams para ${mediaType}:${mediaId} de ${stremioAddonId} recebido. Quantidade: ${streamsData.streams.length}.`);
+    if (streamsData.streams.length > 0) {
+      console.log("TEST_INFO: Streams encontrados:", streamsData.streams);
+      // Poderíamos adicionar verificações sobre a estrutura de um stream se algum fosse retornado.
+    }
+
+    // Testar com um ID de addon inválido
+    const streamsInvalidAddon = await addonInstance.getStremioStreams('addon-inexistente', mediaType, mediaId);
+    console.assert(streamsInvalidAddon === null, "Busca de streams para addon inválido deveria retornar null.");
+
+    await addonManager.unloadAddon('stremio-bridge-addon');
+  });
+
+  // FIM Testes para StremioBridgeAddon
 }
 
 // Garante que runTests só é chamado quando o script é executado diretamente

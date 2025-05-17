@@ -26,7 +26,8 @@
     "@orbitdb/feed-db": "^1.1.2",
     "@orbitdb/set-db": "^1.1.2",
     "datastore-fs": "^10.0.2",
-    "helia": "^5.4.1"
+    "helia": "^5.4.1",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "@babel/core": "^7.27.1",

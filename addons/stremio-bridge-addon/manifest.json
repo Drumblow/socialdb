@@ -1,0 +1,20 @@
+{
+  "id": "stremio-bridge-addon",
+  "name": "Stremio Bridge Addon",
+  "version": "0.1.0",
+  "description": "Permite descobrir e interagir com addons da plataforma Stremio.",
+  "author": "JhuJhones/AI",
+  "coreApiVersion": "^1.0.0",
+  "entryModule": "./index.js",
+  "permissions": [
+    "core:log",
+    "core:httpClient:get"
+  ],
+  "ui": {
+    "settingsView": null
+  },
+  "events": {
+    "provides": [],
+    "consumes": []
+  }
+} 
