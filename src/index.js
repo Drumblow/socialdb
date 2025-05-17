@@ -23,6 +23,8 @@ import { ProfileService } from './services/ProfileService.js';
 import { IdentityManager } from './managers/IdentityManager.js';
 import { NetworkManager } from './managers/NetworkManager.js';
 import { StorageManager } from './managers/StorageManager.js';
+import { AddonManager } from './managers/AddonManager.js';
+import { EventBus } from './event-bus/EventBus.js';
 import { stringToUint8Array, uint8ArrayToString } from './utils/index.js';
 
 const DB_DISCOVERY_TOPIC = '/social-app/db-discovery/1.0.0';
@@ -42,6 +44,8 @@ const baseBootstrapMultiaddrs = [
 let identityManager;
 let networkManager;
 let storageManager;
+let addonManager;
+let coreEventBus;
 let profileServiceInstance;
 
 let appStopped = false;
@@ -78,6 +82,16 @@ async function stopApp() {
         console.log("CORE_DEBUG: NetworkManager fechado.");
     } catch (e) { 
         console.error("CORE_DEBUG: Erro ao fechar NetworkManager", e);
+    }
+  }
+
+  if (addonManager) {
+    console.log("CORE_DEBUG: Fechando AddonManager...");
+    try {
+        await addonManager.close();
+        console.log("CORE_DEBUG: AddonManager fechado.");
+    } catch (e) {
+        console.error("CORE_DEBUG: Erro ao fechar AddonManager", e);
     }
   }
 
@@ -132,7 +146,11 @@ async function main() {
     identityManager = new IdentityManager(dataDir);
     const datastore = await identityManager.init();
 
-    networkManager = new NetworkManager(wsPort, baseBootstrapMultiaddrs, datastore);
+    // Instanciar o EventBus principal do Core
+    coreEventBus = new EventBus();
+    console.log("CORE: EventBus principal instanciado.");
+
+    networkManager = new NetworkManager(wsPort, baseBootstrapMultiaddrs, datastore, coreEventBus);
     if (bootstrapPeerEnv) {
       networkManager.addBootstrapPeer(bootstrapPeerEnv);
     }
@@ -142,6 +160,15 @@ async function main() {
     storageManager = new StorageManager({ libp2p: libp2pOptions, datastore }, path.join(dataDir, 'orbitdb'));
     const { heliaNode, orbitDB: orbitDbInstance } = await storageManager.init();
     
+    // Instanciar e inicializar o AddonManager
+    // Passa os managers dos quais a CoreAPI (e, por extensão, os addons) podem depender.
+    // Passamos null por enquanto para networkManager e storageManager se não quisermos expô-los via CoreAPI ainda,
+    // ou podemos passar as instâncias reais.
+    // A CoreAPI atual já espera networkManager e storageManager.
+    addonManager = new AddonManager(coreEventBus, identityManager, networkManager, storageManager);
+    await addonManager.init();
+    console.log("CORE: AddonManager instanciado e inicializado.");
+
     // Configurar o nó libp2p no NetworkManager após Helia tê-lo criado/configurado
     networkManager.setLibp2pNode(heliaNode.libp2p);
     const ownPeerIdStr = heliaNode.libp2p.peerId.toString();

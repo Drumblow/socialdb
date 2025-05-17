@@ -29,10 +29,11 @@ async function publishWithTimeout(publishCall, timeoutMs) {
 }
 
 export class NetworkManager {
-  constructor(wsPort, initialBootstrapMultiaddrs, datastore) {
+  constructor(wsPort, initialBootstrapMultiaddrs, datastore, coreEventBus) {
     this.wsPort = wsPort;
     this.bootstrapMultiaddrs = [...initialBootstrapMultiaddrs]; // Clonar para evitar modificação externa
     this.datastore = datastore; // Datastore do IdentityManager
+    this.coreEventBus = coreEventBus; // EventBus principal
     this.libp2pNode = null; // Será a instância libp2p do Helia
     this.dbAnnounceListener = null; // Para o handler de descoberta de DB
     this.consultorReadyListener = null; // Para o handler de "consultor pronto"
