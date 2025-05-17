@@ -18,6 +18,7 @@ import { gossipsub } from '@chainsafe/libp2p-gossipsub';
 import { FsDatastore } from 'datastore-fs';
 import { MemoryBlockstore } from 'blockstore-core';
 import { createHelia } from 'helia';
+import fs from 'fs';
 
 export const createMockIdentityManager = (peerId = 'mock-test-peer-id') => ({
   getPeerId: async () => ({ toString: () => peerId }),
@@ -322,8 +323,8 @@ async function runTests() {
     await heliaNode.stop();
     await libp2p.stop();
     await datastore.close();
-    // fs.rmSync(tempDatastorePath, { recursive: true, force: true }); // Limpeza manual se necessário
-    // fs.rmSync(tempOrbitDbPath, { recursive: true, force: true });
+    fs.rmSync(tempDatastorePath, { recursive: true, force: true });
+    fs.rmSync(tempOrbitDbPath, { recursive: true, force: true });
   });
 
   test("no-log-permission-addon NÃO deve obter DB escopado (sem 'core:storage:scoped')", async () => {
@@ -401,8 +402,8 @@ async function runTests() {
     await heliaNode.stop();
     await libp2p.stop();
     await datastore.close();
-    // fs.rmSync(tempDatastorePath, { recursive: true, force: true });
-    // fs.rmSync(tempOrbitDbPath, { recursive: true, force: true });
+    fs.rmSync(tempDatastorePath, { recursive: true, force: true });
+    fs.rmSync(tempOrbitDbPath, { recursive: true, force: true });
   });
 
   test("Deve carregar o posts-addon e tentar obter seu DB escopado", async () => {

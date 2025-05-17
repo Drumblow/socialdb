@@ -57,10 +57,28 @@ export default {
       }
     }
 
+    async function getPosts() {
+      if (!userPostsDB) {
+        coreApi.log(`Posts Addon (ID: ${addonContext.id}): Cannot get posts, DB not available.`);
+        throw new Error('PostsAddon: Database not available to get posts.');
+      }
+      try {
+        const posts = await userPostsDB.all();
+        coreApi.log(`Posts Addon (ID: ${addonContext.id}): Retrieved ${posts.length} posts.`);
+        // Mapear para retornar apenas o valor, pois é isso que o usuário do addon provavelmente quer.
+        // A estrutura completa com hash, etc., pode ser exposta por outra função se necessário.
+        return posts.map(post => post.value);
+      } catch (error) {
+        coreApi.log(`Posts Addon (ID: ${addonContext.id}): Error getting posts: ${error.message}`);
+        throw error;
+      }
+    }
+
     return {
       status: 'initialized',
       manifestId: this.manifest.id,
       createPost,
+      getPosts,
       _getDB: () => userPostsDB
     };
   },

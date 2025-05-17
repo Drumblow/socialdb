@@ -94,8 +94,8 @@ describe('PostsAddon Functionality', () => {
     if (datastore && datastore.status === 'open') await datastore.close(); // Verifica se está aberto antes de fechar
 
     // Limpar diretórios de teste
-    // try { fs.rmSync(tempDatastorePath, { recursive: true, force: true }); } catch(e) { console.warn(`Warn: Could not remove ${tempDatastorePath}`, e.message); }
-    // try { fs.rmSync(tempOrbitDbPath, { recursive: true, force: true }); } catch(e) { console.warn(`Warn: Could not remove ${tempOrbitDbPath}`, e.message); }
+    try { fs.rmSync(tempDatastorePath, { recursive: true, force: true }); } catch(e) { console.warn(`Warn: Could not remove ${tempDatastorePath}`, e.message); }
+    try { fs.rmSync(tempOrbitDbPath, { recursive: true, force: true }); } catch(e) { console.warn(`Warn: Could not remove ${tempOrbitDbPath}`, e.message); }
   });
 
   test('should load posts-addon and create a new post, handling potential PublishError', async () => {
@@ -162,6 +162,45 @@ describe('PostsAddon Functionality', () => {
     await expect(postsAddon.createPost("")).rejects.toThrow('Post text cannot be empty.');
     await expect(postsAddon.createPost("   ")).rejects.toThrow('Post text cannot be empty.');
     await expect(postsAddon.createPost(null)).rejects.toThrow('Post text cannot be empty.');
+  });
+
+  test('getPosts should retrieve all created posts', async () => {
+    const postsAddon = await addonManager.loadAddon(POSTS_ADDON_PATH);
+    expect(postsAddon).toBeDefined();
+    expect(typeof postsAddon.createPost).toBe('function');
+    expect(typeof postsAddon.getPosts).toBe('function');
+
+    const postText1 = "First post for getPosts test!";
+    const postText2 = "Second post for getPosts test!";
+
+    try {
+      await postsAddon.createPost(postText1); 
+    } catch (error) {
+      if (!error.message.includes('PublishError.NoPeersSubscribedToTopic')) throw error;
+      console.log(`Test getPosts: Ignored PublishError for post1: ${error.message}`);
+    }
+
+    try {
+      await postsAddon.createPost(postText2);
+    } catch (error) {
+      if (!error.message.includes('PublishError.NoPeersSubscribedToTopic')) throw error;
+      console.log(`Test getPosts: Ignored PublishError for post2: ${error.message}`);
+    }
+    
+    // Pequena espera para garantir que as escritas no DB sejam processadas
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    const retrievedPosts = await postsAddon.getPosts();
+    expect(retrievedPosts).toBeDefined();
+    expect(Array.isArray(retrievedPosts)).toBe(true);
+    expect(retrievedPosts.length).toBe(2);
+
+    // Verificar o conteúdo dos posts (a ordem pode variar dependendo do DB)
+    // Os posts retornados pela função getPosts já são os `.value`
+    expect(retrievedPosts.some(p => p.text === postText1)).toBe(true);
+    expect(retrievedPosts.some(p => p.text === postText2)).toBe(true);
+    expect(retrievedPosts[0].author).toBe(peerIdInstance.toString());
+    expect(retrievedPosts[1].author).toBe(peerIdInstance.toString());
   });
 
 }); 
